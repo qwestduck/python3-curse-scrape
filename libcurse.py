@@ -81,7 +81,10 @@ class CurseCatalogScraper(ABC):
     def __threading_parseCatalogPage(self, page):
         self.__parseCatalogPage(page)
         self.sem.release()
-    
+
+class STATUS_404(Exception):
+    pass
+
 class CurseReleaseScraper(ABC):
     def __init__(self, curse_id, major):
         self.curse_id = curse_id
@@ -95,6 +98,9 @@ class CurseReleaseScraper(ABC):
             url = CurseURL().files_url(self.curse_id)
 
             response = self.open(url)
+            if response.status_code == 404:
+                raise STATUS_404
+
             html = response.text
 
             soup = BeautifulSoup(html, "lxml")
@@ -117,8 +123,10 @@ class CurseReleaseScraper(ABC):
                 releaseTable.append(r)
         except requests.HTTPError as e:
             print("Curse Update Exception", e)
+        except STATUS_404:
+            print("404 response received while retrieving release table for {}".format(self.curse_id))
         except Exception as e:
-            print(e)
+            print("Error while retrieving release table for {}: {}".format(self.curse_id, e))
 
         self._releaseTable = releaseTable
 
